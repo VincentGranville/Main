@@ -61,3 +61,4 @@ def generateCopulas():
 generateData()
 plotData()
 generateCopulas()
+
