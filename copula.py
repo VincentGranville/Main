@@ -1,3 +1,5 @@
+# source: http://firsttimeprogrammer.blogspot.com/2015/02/copulalib-how-to-use-copulas-in-python.html
+
 import numpy as np
 import matplotlib.pyplot as plt
 from copulalib.copulalib import Copula
