@@ -76,5 +76,4 @@ for group in groupCount:
         line = group+"\t"+str(s_age)+"\t"+str(s_bmi)+"\t"+str(s_children)+"\t"+str(s_charges)+"\n"
         OUT.write(line)
         print("%3d. %d %d %d %d" %(k, s_age, s_bmi, s_children, s_charges))
-        ### print(age[k],bmi[k],children[k],charges[k])
 OUT.close()
