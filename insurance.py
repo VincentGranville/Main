@@ -28,6 +28,8 @@ for obs in rows:
 
 #-- generate synthetic data customized to each group (Gaussian copula)
 
+seed = 453
+np.random.seed(seed)
 OUT=open("insurance_synth.txt","w")
 for group in groupCount:
     nobs = groupCount[group]
