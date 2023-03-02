@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
+import random as python_random
+from tensorflow import random
 from keras.models import Sequential
 from keras.layers import Dense
 from numpy.random import randn
@@ -10,12 +12,18 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 
-seed = 321 
-np.random.seed(seed)     # this is of no use, why?
+seed = 101     # to make results reproducible
+np.random.seed(seed)     # for numpy
+random.set_seed(seed)    # seed for keras
+python_random.seed(seed) # for python
+
 data = pd.read_csv('diabetes.csv')
 print (data.shape)
 print (data.tail())
 print (data.columns)
+
+## To run reprodible runs:
+## CUDA_VISIBLE_DEVICES="" PYTHONHASHSEED=0 python GAN_diabetesb.py
 
 
 #--- STEP 1: Base Accuracy for Real Dataset
@@ -51,7 +59,7 @@ def generate_latent_points(latent_dim, n_samples):
 def generate_fake_samples(generator, latent_dim, n_samples):
     x_input = generate_latent_points(latent_dim, n_samples) # random N(0,1) data
     X = generator.predict(x_input,verbose=0) 
-    y = np.zeros((n_samples, 1))  # class label = 1
+    y = np.zeros((n_samples, 1))  # class label = 0 for fake data
     return X, y
 
 def generate_real_samples(n):
@@ -71,6 +79,7 @@ def define_generator(latent_dim, n_outputs=9):
     return model
 
 # After we have defined the generator, we will define the discriminator next step. The discriminator is also a simple sequential model including 3 dense layers. The first two layers are activated by ‘relu’ function, the output layer is activated by ‘sigmoid’ function because it will discriminate the input samples are real (True) or fake (False).
+# optimizer = 'SGD'  may be more stable
 
 def define_discriminator(n_inputs=9):
     model = Sequential()
@@ -90,7 +99,7 @@ def define_gan(generator, discriminator):
 
 # Finally we will train the generator and discriminator. For each epoch, we will combine half batch of real data and half batch of fake data, then calculate the average loss. The combined model will be updated based on train_on_batch function. The trained generator will be saved for further use.
 
-def train(g_model, d_model, gan_model, latent_dim, n_epochs=10000, n_batch=128, n_eval=500): 
+def train(g_model, d_model, gan_model, latent_dim, n_epochs=10000, n_batch=128, n_eval=500): ## 10000 epochs
     
     # determine half the size of one batch, for updating the  discriminator
     half_batch = int(n_batch / 2)
@@ -103,7 +112,7 @@ def train(g_model, d_model, gan_model, latent_dim, n_epochs=10000, n_batch=128, 
         x_fake, y_fake = generate_fake_samples(g_model, latent_dim, half_batch)
 
         # update discriminator
-        d_loss_real, d_real_acc = d_model.train_on_batch(x_real, y_real)
+        d_loss_real, d_real_acc = d_model.train_on_batch(x_real, y_real) 
         d_loss_fake, d_fake_acc = d_model.train_on_batch(x_fake, y_fake)
         d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
@@ -120,7 +129,7 @@ def train(g_model, d_model, gan_model, latent_dim, n_epochs=10000, n_batch=128, 
             plt.subplot(1, 1, 1)
             plt.plot(d_history, label='d')
             plt.plot(g_history, label='gen')
-            plt.show()
+            plt.show() 
             plt.close()
             
     return(g_model)
