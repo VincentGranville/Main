@@ -5,7 +5,7 @@ from sdv.tabular import CopulaGAN
 demos = get_available_demos()
 print(demos)  # show list of demo datasets
 
-real_data = load_tabular_demo('student_placements_pii')
+metadata, real_data = load_tabular_demo('student_placements_pii',metadata=True)
 print("\nReal data:\n",real_data.head())
 model = CopulaGAN()
 model = CopulaGAN(primary_key='student_id',anonymize_fields={'address': 'address' })
