@@ -79,3 +79,4 @@ for group in groupCount:
         OUT.write(line)
         print("%3d. %d %d %d %d" %(k, s_age, s_bmi, s_children, s_charges))
 OUT.close()
+
