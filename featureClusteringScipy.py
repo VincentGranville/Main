@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.spatial.distance as ssd
 import scipy.cluster.hierarchy as hcluster
@@ -14,9 +14,15 @@ correlMatrix = [
       [0.6796,0.3436,0.3000,0.1678,0.2171,0.0698,0.0850,1.0000,0.3508],
       [0.2566,0.5157,0.1927,0.2559,0.3014,0.2701,0.2093,0.3508,1.0000]]
 
-# Hierarchchical clustering
 simMatrix = correlMatrix - np.identity(len(correlMatrix)) 
 distVec = ssd.squareform(simMatrix)
 linkage = hcluster.linkage(1 - distVec)
-dendro  = hcluster.dendrogram(linkage)
+
+plt.figure()
+axes = plt.axes()
+axes.tick_params(axis='both', which='major', labelsize=8)
+for axis in ['top','bottom','left','right']:
+    axes.spines[axis].set_linewidth(0.5) 
+with plt.rc_context({'lines.linewidth': 0.5}):
+    dendro  = hcluster.dendrogram(linkage,leaf_font_size=8)
 plt.show()
