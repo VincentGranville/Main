@@ -33,7 +33,7 @@ n_outputs  = 9   # number of features
 #--- STEP 1: Base Accuracy for Real Dataset
 
 features = ['X1', 'X2', 'X3', 'X4', 'X5', 'X6', 'X7', 'X8']
-label = ['X9']  # Outcome (binary 0/1) 
+label = ['Outcome']  # Outcome (binary 0/1) 
 X = data[features]
 y = data[label] 
 
@@ -197,7 +197,6 @@ print("Classification report of fake data model:\n",metrics.classification_repor
 #--- STEP 4: Evaluate the Quality of Generated Fake Data With g_dist and Table_evaluator
 
 from table_evaluator import load_data, TableEvaluator
-
 table_evaluator = TableEvaluator(data, data_fake)
 table_evaluator.evaluate(target_col='Outcome')
 # table_evaluator.visual_evaluation() 
