@@ -1,3 +1,5 @@
+# For description, see technical paper #29 ay https://mltechniques.com/resources/
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
