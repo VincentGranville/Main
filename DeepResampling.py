@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib import pyplot
 from statsmodels.distributions.empirical_distribution import ECDF
 import warnings
@@ -128,7 +129,7 @@ dt_prod12 = np.empty(shape=(n_features,n_features))
 ds_prod12 = np.empty(shape=(n_features,n_features))
 
 for k in range(n_features):
-    for l in range(0, n_features):
+    for l in range(n_features):
         dt_prod[l, k] = np.dot(data_train[:,l], data_train[:,k])
         ds_prod[l, k] = np.dot(data_synth[:,l], data_synth[:,k])
         dt_prod12[l, k] = np.dot(g(data_train[:,l]), h(data_train[:,k])) 
@@ -162,7 +163,7 @@ def total_distance():
         if symmetric:
             lmax = k
         for l in range(lmax):
-            if l != k:
+            if l != k: 
                 values = get_distance(k, l)
                 eval += values[0]
                 if values[0] > max_dist:
@@ -252,7 +253,7 @@ def update_product(k, l, idx1, idx2):
 
 #- [5.1] feature sampling
 
-def sample_feature(mode):
+def sample_feature(mode, hyperParameter):
     
     # Randomly pick up one column (a feature) to swap 2 values from 2 random rows 
     # One feature is assumed to be in the right order, thus ignored
@@ -296,122 +297,165 @@ for k in range(n_features):
 
 #- [5.3] parameters, initializations
 
-mode = 'Equalized'   # options: 'Standard', 'Equalized'
-hyperParam = [0.15, 0.15, 0.70, 0.00]  # for telecom dataset
-# hyperParam = [0.25, 0.25, 0.25, 0.25]  
+mode = 'Equalized'   # options: 'Standard', 'Equalized' 
 eps = 0.0  # -0.000001
 
 nbatches = 1  # mininum is 1
 niter = 200001
 batch_size = nobs_synth // nbatches 
 niter_per_batch = niter // nbatches
-print("\nNumber of obs to generate: %5d" %(nobs_synth))
-print("Number of obs per batch  : %5d" %(batch_size))
-print("Number of iter per batch : %5d" %(niter_per_batch))
-print("Number of batches        : %5d" %(nbatches))
+print("\nNumber of obs to generate: %6d" %(nobs_synth))
+print("Number of obs per batch  : %6d" %(batch_size))
+print("Number of iter per batch : %6d" %(niter_per_batch))
+print("Number of batches        : %6d" %(nbatches))
 print("\nLoss weights:\n    term 1: %6.2f\n    term 2: %6.2f" 
           %(weights[0], weights[1])) 
-print("\nHyperparameter vector:")
-for k in range(len(hyperParam)):
-    print("    feature %2d: value: %6.2f" %(k, hyperParam[k]))
-
-batch = 0
-lower_row = 0
-upper_row = batch_size
-nswaps = 0
-
-arr_swaps = []
-arr_history_quality = []
-arr_history_max_dist = []
-arr_time = []
 
 
 #--- [6] main loop: synthetization
+
+#- [6.1] main function
  
+def deep_resampling(hyperParameter):
+  
+    # main function
+
+    batch = 0
+    lower_row = 0
+    upper_row = batch_size
+    nswaps = 0
+
+    arr_swaps = []
+    arr_history_quality = []
+    arr_history_max_dist = []
+    arr_time = []
+
+    for iter in range(niter): ##     in range(nobs_synth):
+
+        k = sample_feature(mode, hyperParameter)    
+        batch = iter // niter_per_batch
+        lower_row = batch * batch_size
+        upper_row = lower_row + batch_size 
+        idx1 = np.random.randint(lower_row, upper_row) % nobs_synth
+        idx2 = np.random.randint(lower_row, upper_row) % nobs_synth
+        tmp1 = data_synth[idx1, k]
+        tmp2 = data_synth[idx2, k]
+
+        delta = 0
+        for l in range(n_features):  
+            if l != k:
+                values = get_distance(k, l)
+                delta += values[0] 
+                if not symmetric:  # if functions g, h are different
+                    values = get_distance(l, k)
+                    delta += values[0] 
+
+        new_delta = 0
+        for l in range(n_features): 
+            if l != k:
+                values = get_new_distance(k, l, idx1, idx2)
+                new_delta += values[0] 
+                if not symmetric:  # if functions g, h are different
+                    values = get_new_distance(l, k, idx1, idx2)
+                    new_delta += values[0]
+
+        gain = delta - new_delta
+        if gain > eps:
+            for l in range(n_features):
+                if l != k:
+                    update_product(k, l, idx1, idx2) 
+                    # update_product(l, k, idx1, idx2) 
+            data_synth[idx1, k] = tmp2
+            data_synth[idx2, k] = tmp1
+            nswaps += 1
+
+        if iter % 500 == 0: 
+            quality, max_dist = total_distance()
+            arr_swaps.append(nswaps)
+            arr_history_quality.append(quality)
+            arr_history_max_dist.append(max_dist)
+            arr_time.append(iter)
+            if iter % 5000 == 0:
+                print("Iter: %6d    Distance: %8.4f     Number of swaps: %6d" 
+                         %(iter, quality, nswaps)) 
+    return(nswaps, arr_swaps, arr_history_quality, arr_history_max_dist, arr_time)
+
+#- [6.2] save synthetic data, show some stats
+
+def evaluate_and_save(history, output_syntheticData_filename): 
+
+    print("\nHyperparameter vector:")
+    for k in range(len(hyperParam)):
+        print("    feature %2d: value: %6.2f" %(k, hyperParam[k]))
+
+    print("\nMetrics after deep resampling\n")
+    quality, max_dist = total_distance()
+    print("Distance: %8.4f" %(quality)) 
+    print("Max Dist: %8.4f" %(max_dist)) 
+    nswaps = history[0]
+    print("Number of swaps: %6d" %(nswaps)) 
+
+    data_synthetic = pd.DataFrame(data_synth, columns = features)
+    data_synthetic.to_csv(output_syntheticData_filename)
+    print("\nSynthetic data, first 10 rows\n",data_synthetic.head(10))
+
+    print("\nBivariate feature correlation values after deep resampling:")
+    print("....dt_xx for training set, ds_xx for synthetic data")
+    print("....xx_r for correl[k, l], xx_r12 for correl[g(k), h(l)]\n")
+    print("%2s %2s %8s %8s %8s %8s %8s" 
+             % ('k', 'l', 'dist', 'dt_r', 'ds_r', 'dt_r12', 'ds_r12'))
+    print("--------------------------------------------------")
+    for k in range(n_features):
+        for l in range(n_features):
+            if k != l:
+                values = get_distance(l, k)
+                dist = values[0]
+                dt_r = values[1]    # training, 1st term of loss function
+                ds_r = values[2]    # synth., 1st term of loss function
+                dt_r12 = values[3]  # training, 2nd term of loss function
+                ds_r12 = values[4]  # synth., 2nd term of loss function
+                print("%2d %2d %8.4f %8.4f %8.4f %8.4f %8.4f" 
+                       % (k, l, dist, dt_r, ds_r, dt_r12, ds_r12)) 
+    return()
+
+#- [6.3] plot history of loss function, and cumulated number of swaps
+
+def plot_history(history):
+
+    arr_swaps = history[1]
+    arr_history_quality = history[2]
+    arr_history_max_dist = history[3]
+    arr_time = history[4]
+
+    mpl.rcParams['axes.linewidth'] = 0.3
+    plt.rc('xtick',labelsize=7)
+    plt.rc('ytick',labelsize=7)
+    plt.xticks(fontsize=7)
+    plt.yticks(fontsize=7)
+    plt.subplot(1, 2, 1)
+    plt.plot(arr_time, arr_swaps, linewidth = 0.3)
+    plt.legend(['cumulated swaps'], fontsize="7", 
+        loc ="upper center", ncol=1)
+    plt.subplot(1, 2, 2)
+    plt.plot(arr_time, arr_history_quality, linewidth = 0.3)
+    plt.plot(arr_time, arr_history_max_dist, linewidth = 0.3)
+    plt.legend(['distance','max dist'], fontsize="7", 
+        loc ="upper center", ncol=2)
+    plt.show()
+    return()
+
+#- [6.4] main part
+
 print("\nNow deep resampling starting...\n")
 
-for iter in range(niter): ##     in range(nobs_synth):
+# hyperParam = [0.25, 0.25, 0.25, 0.25] 
 
-    k = sample_feature(mode)    
-    batch = iter // niter_per_batch
-    lower_row = batch * batch_size
-    upper_row = lower_row + batch_size 
-    idx1 = np.random.randint(lower_row, upper_row) % nobs_synth
-    idx2 = np.random.randint(lower_row, upper_row) % nobs_synth
-    tmp1 = data_synth[idx1, k]
-    tmp2 = data_synth[idx2, k]
+hyperParam = [0.15, 0.15, 0.70, 0.00]  # for telecom dataset
+history = deep_resampling(hyperParam)
+evaluate_and_save(history, 'telecom_synth_vg2.csv')
+plot_history(history)
 
-    delta = 0
-    for l in range(n_features):  
-        if l != k:
-            values = get_distance(k, l)
-            delta += values[0] 
-            if not symmetric:  # if functions g, h are different
-                values = get_distance(l, k)
-                delta += values[0] 
-
-    new_delta = 0
-    for l in range(n_features): 
-        if l != k:
-            values = get_new_distance(k, l, idx1, idx2)
-            new_delta += values[0] 
-            if not symmetric:  # if functions g, h are different
-                values = get_new_distance(l, k, idx1, idx2)
-                new_delta += values[0]
-
-    gain = delta - new_delta
-    if gain > eps:
-        for l in range(n_features):
-            if l != k:
-                update_product(k, l, idx1, idx2) 
-                # update_product(l, k, idx1, idx2) 
-        data_synth[idx1, k] = tmp2
-        data_synth[idx2, k] = tmp1
-        nswaps += 1
-
-    if iter % 500 == 0: 
-        quality, max_dist = total_distance()
-        arr_swaps.append(nswaps)
-        arr_history_quality.append(quality)
-        arr_history_max_dist.append(max_dist)
-        arr_time.append(iter)
-        if iter % 5000 == 0:
-            print("Iter: %6d    Distance: %8.4f     Number of swaps: %6d" 
-                     %(iter, quality, nswaps)) 
-
-
-#--- [7] Saving outputs, quick evaluation of synthetic data
-
-print("\nMetrics after deep resampling\n")
-quality, max_dist = total_distance()
-print("Distance: %8.4f" %(quality)) 
-print("Max Dist: %8.4f" %(max_dist)) 
-print("Number of swaps: %6d" %(nswaps)) 
-
-data_synthetic = pd.DataFrame(data_synth, columns = features)
-data_synthetic.to_csv('telecom_synth_vg2.csv')
-print("\nSynthetic data, first 10 rows\n",data_synthetic.head(10))
-
-print("\nBivariate feature correlation values after deep resampling:")
-print("....dt_xx for training set, ds_xx for synthetic data")
-print("....xx_r for correl[k, l], xx_r12 for correl[g(k), h(l)]\n")
-print("%2s %2s %8s %8s %8s %8s %8s" 
-             % ('k', 'l', 'dist', 'dt_r', 'ds_r', 'dt_r12', 'ds_r12'))
-print("--------------------------------------------------")
-for k in range(n_features):
-    for l in range(n_features):
-        if k != l:
-            values = get_distance(l, k)
-            dist = values[0]
-            dt_r = values[1]    # training, 1st term of loss function
-            ds_r = values[2]    # synth., 1st term of loss function
-            dt_r12 = values[3]  # training, 2nd term of loss function
-            ds_r12 = values[4]  # synth., 2nd term of loss function
-            print("%2d %2d %8.4f %8.4f %8.4f %8.4f %8.4f" 
-                     % (k, l, dist, dt_r, ds_r, dt_r12, ds_r12)) 
-
-
-#--- [8] Evaluation synthetization using joint ECDF & Kolmogorov-Smirnov distance
+#--- [7] Evaluation synthetization using joint ECDF & Kolmogorov-Smirnov distance
 
 #        dataframes: df = synthetic; data = real data,
 #        compute multivariate ecdf on validation set, sort it by value (from 0 to 1) 
@@ -425,7 +469,7 @@ def string_to_numbers(string):
     arr = [eval(i) for i in arr]
     return(arr)
 
-#- [8.1] compute ecdf on validation set (to later compare with that on synth data)
+#- [7.1] compute ecdf on validation set (to later compare with that on synth data)
 
 def compute_ecdf(dataframe, n_nodes, adjusted):
 
@@ -486,7 +530,7 @@ if reseed:
 arr_location1, arr_value1 = compute_ecdf(data_validation, n_nodes, adjusted = True)
 arr_location2, arr_value2 = compute_ecdf(data_validation, n_nodes, adjusted = False)
 
-#- [8.2] comparison: synthetic (based on training set) vs real (validation set)
+#- [7.2] comparison: synthetic (based on training set) vs real (validation set)
 
 def ks_delta(SyntheticData, locations, ecdf_ValidationSet):
 
@@ -526,7 +570,7 @@ ks_max2, ecdf_real2, ecdf_synth2 = ks_delta(df, arr_location2, arr_value2)
 ks_max = max(ks_max1, ks_max2)
 print("Test ECDF Kolmogorof-Smirnov dist. (synth. vs valid.): %6.4f" %(ks_max))
 
-#- [8.3] comparison: training versus validation set
+#- [7.3] comparison: training versus validation set
 
 df = pd.read_csv('telecom_training_vg2.csv')
 base_ks_max1, ecdf_real1, ecdf_synth1 = ks_delta(df, arr_location1, arr_value1)
@@ -535,7 +579,7 @@ base_ks_max = max(base_ks_max1, base_ks_max2)
 print("Base ECDF Kolmogorof-Smirnov dist. (train. vs valid.): %6.4f" %(base_ks_max))
 
 
-#--- [9] visualizations (based on MatPlotLib version: 3.7.1)
+#--- [8] visualizations (based on MatPlotLib version: 3.7.1)
 
 def vg_scatter(df, feature1, feature2, counter):
 
@@ -569,29 +613,9 @@ def vg_histo(df, feature, counter):
     plt.yticks([])
     return()
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 mpl.rcParams['axes.linewidth'] = 0.3
 
-#- [9.1] evolution of loss functions and number of swaps over time
-
-mpl.rcParams['axes.linewidth'] = 0.3
-plt.rc('xtick',labelsize=7)
-plt.rc('ytick',labelsize=7)
-plt.xticks(fontsize=7)
-plt.yticks(fontsize=7)
-plt.subplot(1, 2, 1)
-plt.plot(arr_time, arr_swaps, linewidth = 0.3)
-plt.legend(['cumulated swaps'], fontsize="7", 
-    loc ="upper center", ncol=1)
-plt.subplot(1, 2, 2)
-plt.plot(arr_time, arr_history_quality, linewidth = 0.3)
-plt.plot(arr_time, arr_history_max_dist, linewidth = 0.3)
-plt.legend(['distance','max dist'], fontsize="7", 
-    loc ="upper center", ncol=2)
-plt.show()
-
-#- [9.2] scatterplots for Churn = 'No'
+#- [8.1] scatterplots for Churn = 'No'
 
 dfs = pd.read_csv('telecom_synth_vg2.csv')
 dfs.drop(dfs[dfs['Churn'] == 0].index, inplace = True)
@@ -606,7 +630,7 @@ vg_scatter(dfs, 'MonthlyCharges', 'TotalChargeResidues', 5)
 vg_scatter(dfv, 'MonthlyCharges', 'TotalChargeResidues', 6)
 plt.show()
 
-#- [9.3] scatterplots for Churn = 'Yes'
+#- [8.2] scatterplots for Churn = 'Yes'
 
 dfs = pd.read_csv('telecom_synth_vg2.csv')
 dfs.drop(dfs[dfs['Churn'] == 1].index, inplace = True)
@@ -624,7 +648,7 @@ vg_scatter(dfs, 'MonthlyCharges', 'TotalChargeResidues', 5)
 vg_scatter(dfv, 'MonthlyCharges', 'TotalChargeResidues', 6)
 plt.show()
 
-#- [9.4] ECDF scatterplot: validation set vs. synth data 
+#- [8.3] ECDF scatterplot: validation set vs. synth data 
 
 mpl.rcParams['axes.linewidth'] = 0.3
 plt.rc('xtick',labelsize=7)
@@ -660,7 +684,7 @@ plt.xticks(list(x_labels.keys()), x_labels.values())
 plt.yticks(list(y_labels.keys()), y_labels.values())
 plt.show()
 
-#- [9.5] histograms, Churn = 'No'
+#- [8.4] histograms, Churn = 'No'
 
 dfs = pd.read_csv('telecom_synth_vg2.csv')
 dfs.drop(dfs[dfs['Churn'] == 0].index, inplace = True)
@@ -684,7 +708,7 @@ print("Churn = No  (Synth. obs.)", n_churn_no_synth)
 print("Churn = Yes (Valid. obs.)", n_churn_yes_valid)
 print("Churn = No  (Valid. obs.)", n_churn_no_valid)
 
-#- [9.6] histograms, Churn = 'Yes'
+#- [8.5] histograms, Churn = 'Yes'
 
 dfs = pd.read_csv('telecom_synth_vg2.csv')
 dfs.drop(dfs[dfs['Churn'] == 1].index, inplace = True)
