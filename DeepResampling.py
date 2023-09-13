@@ -45,8 +45,8 @@ data = data.sample(frac = 1)  # shuffle rows to break artificial sorting
 
 data_training = data.sample(frac = 0.5)
 data_validation = data.drop(data_training.index)
-data_training.to_csv('telecom_training_vg2.csv')
-data_validation.to_csv('telecom_validation_vg2.csv')
+data_training.to_csv('training_vg2.csv')
+data_validation.to_csv('validation_vg2.csv')
 data_train = pd.DataFrame.to_numpy(data_training) 
 
 nobs = len(data_training)
@@ -341,7 +341,7 @@ def deep_resampling(hyperParameter, run, loss_type, n_batches,
             gain = delta - new_delta
         elif loss_type == 'max_loss':
             gain = delta2 - new_delta2
-        if gain > 0: 
+        if gain > 0: #### -0.0001 * delta2: ## eps2: ###########3 ############ make this a function of run
             cgain += gain
             for l in range(n_features):
                 if l != k:
@@ -483,7 +483,7 @@ hyperParam = hyperParam / np.sum(hyperParam)
 flagParam = hyperParam
 history = deep_resampling(hyperParam, run, loss_type, n_batches, n_iter, 
                           nobs_synth, weights, flagParam, mode)
-evaluate_and_save('telecom_synth_vg2.csv', weights, run, flagParam)
+evaluate_and_save('synth_vg2.csv', weights, run, flagParam)
 plot_history(history)
 
 #- deep resampling: second run  
@@ -498,7 +498,7 @@ hyperParam = hyperParam / np.sum(hyperParam)
 flagParam += hyperParam
 history = deep_resampling(hyperParam, run, loss_type, n_batches, n_iter, 
                           nobs_synth, weights, flagParam, mode)
-evaluate_and_save('telecom_synth_vg2.csv', weights, run, flagParam)
+evaluate_and_save('synth_vg2.csv', weights, run, flagParam)
 plot_history(history)
 
 
@@ -509,6 +509,7 @@ plot_history(history)
 
 print("\nMultivariate ECDF computations...\n")
 n_nodes = 1000   # number of random locations in feature space, where ecdf is computed
+                 # better use 5000, but more slow
 seed = 555
 np.random.seed(seed) 
 
@@ -562,24 +563,24 @@ mpl.rcParams['axes.linewidth'] = 0.3
 
 #- [10.1] scatterplots 
 
-dfs = pd.read_csv('telecom_synth_vg2.csv')
-dfv = pd.read_csv('telecom_validation_vg2.csv')
-vg_scatter(dfs, 'X1', 'X2', 1)
-vg_scatter(dfv, 'X1', 'X2', 2)
-vg_scatter(dfs, 'X1', 'X3', 3)
-vg_scatter(dfv, 'X1', 'X3', 4)
-vg_scatter(dfs, 'X2', 'X3', 5)
-vg_scatter(dfv, 'X2', 'X3', 6)
+dfs = pd.read_csv('synth_vg2.csv')
+dfv = pd.read_csv('validation_vg2.csv')
+vg_scatter(dfs, features[0], features[1], 1)
+vg_scatter(dfv, features[0], features[1], 2)
+vg_scatter(dfs, features[0], features[2], 3)
+vg_scatter(dfv, features[0], features[2], 4)
+vg_scatter(dfs, features[1], features[2], 5)
+vg_scatter(dfv, features[1], features[2], 6)
 plt.show()
 
 #- [10.2] histograms
 
-dfs = pd.read_csv('telecom_synth_vg2.csv')
-dfv = pd.read_csv('telecom_validation_vg2.csv')
-vg_histo(dfs, 'X1', 1)
-vg_histo(dfs, 'X2', 2)
-vg_histo(dfs, 'X3', 3)
-vg_histo(dfv, 'X1', 4)
-vg_histo(dfv, 'X2', 5)
-vg_histo(dfv, 'X3', 6)
+dfs = pd.read_csv('synth_vg2.csv')
+dfv = pd.read_csv('validation_vg2.csv')
+vg_histo(dfs, features[0], 1)
+vg_histo(dfs, features[1], 2)
+vg_histo(dfs, features[2], 3)
+vg_histo(dfv, features[0], 4)
+vg_histo(dfv, features[1], 5)
+vg_histo(dfv, features[2], 6)
 plt.show()
