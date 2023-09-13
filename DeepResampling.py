@@ -341,7 +341,7 @@ def deep_resampling(hyperParameter, run, loss_type, n_batches,
             gain = delta - new_delta
         elif loss_type == 'max_loss':
             gain = delta2 - new_delta2
-        if gain > 0: #### -0.0001 * delta2: ## eps2: ###########3 ############ make this a function of run
+        if gain > 0: 
             cgain += gain
             for l in range(n_features):
                 if l != k:
