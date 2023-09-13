@@ -480,7 +480,7 @@ loss_type = 'sum_loss'  # options: 'max_loss' or 'sum_loss'
 weights = [0.5, 0.5] 
 hyperParam = [1.00, 1.00, 1.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1.00] 
 hyperParam = hyperParam / np.sum(hyperParam)
-flagParam = hyperParam
+flagParam = np.copy(hyperParam)
 history = deep_resampling(hyperParam, run, loss_type, n_batches, n_iter, 
                           nobs_synth, weights, flagParam, mode)
 evaluate_and_save('synth_vg2.csv', weights, run, flagParam)
