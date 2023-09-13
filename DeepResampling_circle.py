@@ -572,15 +572,3 @@ vg_scatter(dfv, features[0], features[2], 4)
 vg_scatter(dfs, features[1], features[2], 5)
 vg_scatter(dfv, features[1], features[2], 6)
 plt.show()
-
-#- [10.2] histograms
-
-dfs = pd.read_csv('synth_vg2.csv')
-dfv = pd.read_csv('validation_vg2.csv')
-vg_histo(dfs, features[0], 1)
-vg_histo(dfs, features[1], 2)
-vg_histo(dfs, features[2], 3)
-vg_histo(dfv, features[0], 4)
-vg_histo(dfv, features[1], 5)
-vg_histo(dfv, features[2], 6)
-plt.show()
