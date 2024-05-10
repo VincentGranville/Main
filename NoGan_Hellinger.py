@@ -30,7 +30,7 @@ for d in range(dim):
 
 def find_quantile_index(x, arr_quantiles):
     k = 0 
-    while x > arr_quantiles[k] and k <= len(arr_quantiles): 
+    while x > arr_quantiles[k] and k < len(arr_quantiles): 
         k += 1
     return(max(0, k-1)) 
 
