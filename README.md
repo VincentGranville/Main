@@ -7,4 +7,7 @@ regardless of the evaluation metric (including state-of-the-art new quality metr
 
 <li>DeepResampling code, another fast NoGAN based on resampling and distribution-free Hierarchical Bayesian Models, with hyperparameter auto-tuning.
 For details, see technical paper #31, available <a href="https://mltechniques.com/resources/">here</a>. 
+
+<li>NoGAN_Hellinger code (two scripts), with loss function replaced by the Hellinger model evaluation metric. A blend of NoGAN and DeepResampling. For details,
+see section 2.4 in the project textbook, <a href="https://github.com/VincentGranville/Large-Language-Models/blob/main/Projects4.pdf">here</a>. </li>  
 <ul>
