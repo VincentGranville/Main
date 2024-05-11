@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from matplotlib import pyplot
 
 # you can read data from URL below
@@ -198,6 +199,11 @@ for iter in range(n_iter):
 
 
 #--- [5] Plot some result
+
+mpl.rcParams['lines.linewidth'] = 0.3
+mpl.rcParams['axes.linewidth'] = 0.5
+plt.rcParams['xtick.labelsize'] = 7
+plt.rcParams['ytick.labelsize'] = 7
 
 plt.scatter(synth_X[:,0],synth_X[:,1], c = 'red', s = 0.6)
 plt.scatter(X[:,0],X[:,1], c = 'blue', s = 0.6)
