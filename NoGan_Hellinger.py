@@ -143,9 +143,9 @@ for iter in range(n_iter):
     D = + ( np.sqrt((scount2+1)/nobs_synth) - np.sqrt(rcount2/nobs_real) )**2
     delta_H = A + B + C + D
 
-    # if (delta_H < 0.00 and Hellinger < 0.6)  or Hellinger + delta_H > 0.6: 
+    #if delta_H < 0.00:
 
-    if delta_H < 0.00:
+    if (delta_H < 0.00 and Hellinger < 0.6)  or Hellinger + delta_H > 0.6: 
 
         # assign point k in synth data to bin attached to point l in real data
 
