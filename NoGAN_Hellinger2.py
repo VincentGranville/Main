@@ -146,8 +146,12 @@ def array_to_tuple(arr):
 
 
 n_iter = 2000000  
-Hellinger = 2.0  # maximum potential value (min is 0 and means perfect fit)
-swaps = 0
+Hellinger = 40.0   # arbitrary value
+swaps = 0  
+history_log_H = []
+history_log_swaps = []
+flist = []  # list of image filenames for the video
+frame = 0   # frame number, for video
 
 # to accelerate computations (pre-computed sqrt)
 sqrt_real = np.sqrt(nobs_real)
@@ -156,6 +160,11 @@ n_sqrt = max(nobs_real, nobs_synth)
 arr_sqrt = np.sqrt(np.arange(n_sqrt))
 cutoff = 10000   # 50000 if fim = 3, 10000 if dim = 2
 
+# visualization: graphic parameters
+mpl.rcParams['lines.linewidth'] = 0.3
+mpl.rcParams['axes.linewidth'] = 0.5
+plt.rcParams['xtick.labelsize'] = 7
+plt.rcParams['ytick.labelsize'] = 7
 
 for iter in range(n_iter):
 
@@ -259,9 +268,22 @@ for iter in range(n_iter):
         synth_X[k, d] = synth_X[l, d]
         synth_X[l, d] = aux
 
+        if swaps % 25 == 0:
+
+            # save image for future inclusion in video
+            fname='nogan3_frame'+str(frame)+'.png'
+            flist.append(fname)
+            plt.scatter(synth_X[:,0], synth_X[:,1], s = 1.0) 
+            plt.savefig(fname, dpi = 200)
+            plt.close() 
+            frame += 1
+
     if iter % 1000 == 0:
+
         print("Iter: %7d | Loss: %9.6f | Swaps: %5d" 
               %(iter, Hellinger, swaps)) 
+        history_log_H.append(Hellinger)
+        history_log_swaps.append(swaps)
 
 
 #--- [5] Evaluation with KS distance
@@ -291,15 +313,20 @@ print("Base ECDF Kolmogorof-Smirnov dist. (init.  vs train.): %6.4f" %(ks_base))
 print("Diff ECDF Kolmogorof-Smirnov dist. (init.  vs synth.): %6.4f" %(ks_diff))
 
 
-#--- [6] Plot some result
+#--- [6] Plot some results
 
-mpl.rcParams['lines.linewidth'] = 0.3
-mpl.rcParams['axes.linewidth'] = 0.5
-plt.rcParams['xtick.labelsize'] = 7
-plt.rcParams['ytick.labelsize'] = 7
+import moviepy.video.io.ImageSequenceClip
+clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(flist, fps=6)
+clip.write_videofile('nogan3.mp4')
 
 plt.scatter(synth_X[:,0],synth_X[:,1], c = 'red', s = 0.6)
 plt.scatter(synth_X_init[:,0],synth_X_init[:,1], c = 'green', s = 0.6)
 plt.scatter(X[:,0],X[:,1], c = 'blue', s = 0.6)
+plt.show()
+
+x_axis = range(len(history_log_H))
+plt.plot(x_axis, history_log_H)
+plt.show()
+plt.plot(x_axis, history_log_swaps)
 plt.show()
 
