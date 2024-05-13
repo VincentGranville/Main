@@ -4,14 +4,13 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib import pyplot
 
+
+#--- [1] Read data and select dim 
+
 # you can read data from URL below
 # https://raw.githubusercontent.com/VincentGranville/Main/main/circle8d.csv
 data = pd.read_csv('circle8d.csv')
 features = list(data.columns.values)
-
-
-#--- [1] read data, build quantile structure 
-
 X = data.to_numpy()
 features = np.array(features)
 
@@ -21,12 +20,10 @@ X = X[:, 0:dim]
 features = features[0:dim]
 nobs_real, dim = X.shape
 
-# initial granularity
-granularity = 20   #  set to 2 if dim > 2, otherwise set to 20
-Hyperparam = np.full(dim, granularity) 
-grid_shift = np.zeros(dim)
 
-def create_quantile_table(x, Hyperparam, shift=grid_shift):
+#--- [2] Functions to build bin structure
+
+def create_quantile_table(x, Hyperparam, shift):
 
     arr_q = [] 
     for d in range(dim): 
@@ -40,10 +37,6 @@ def create_quantile_table(x, Hyperparam, shift=grid_shift):
         arr_q.append(arr_qd)
     return(arr_q)
 
-arr_q = create_quantile_table(X, Hyperparam)
-
-
-#--- [2] Build bin structure for real data
 
 def find_quantile_index(x, arr_quantiles):
     k = 0
@@ -84,16 +77,10 @@ def create_bin_structure(x, arr_q):
     return(hash_bins, hash_index, hash_bins_median)
 
 
-( hash_bins_real, 
-  hash_index_real, 
-  hash_bins_median_real
-) = create_bin_structure(X, arr_q)
-
-
-#--- [3] Generate nobs_synth obs, create initial bin structure for synth data  
+#--- [3] Generate nobs_synth obs
 
 # if nobs_synth > 1000, split in smaller batches, do one batch at a time
-nobs_synth = nobs_real 
+nobs_synth = nobs_real  
 seed = 155
 np.random.seed(seed)
 
@@ -118,15 +105,8 @@ elif mode == 'Shuffle':
 
 synth_X_init = np.copy(synth_X)
 
-# create bin structure for synth. data
 
-( hash_bins_synth, 
-  hash_index_synth,
-  hash_bins_median_synth,  # unused
-) = create_bin_structure(synth_X, arr_q)
-
-
-#--- [4] Main part: change synth obs to minimize Hellinger loss function
+#--- [4] Main part: create synth obs to minimize Hellinger loss function
 
 def in_bin(x, key, arr_q):
     # test if vector x is in bin attached to key
@@ -144,8 +124,6 @@ def array_to_tuple(arr):
         list = (*list, arr[k])
     return(list)
 
-
-n_iter = 2000000  
 Hellinger = 40.0   # arbitrary value
 swaps = 0  
 history_log_H = []
@@ -158,7 +136,6 @@ sqrt_real = np.sqrt(nobs_real)
 sqrt_synth = np.sqrt(nobs_synth)
 n_sqrt = max(nobs_real, nobs_synth) 
 arr_sqrt = np.sqrt(np.arange(n_sqrt))
-cutoff = 10000   # 50000 if fim = 3, 10000 if dim = 2
 
 # visualization: graphic parameters
 mpl.rcParams['lines.linewidth'] = 0.3
@@ -166,13 +143,28 @@ mpl.rcParams['axes.linewidth'] = 0.5
 plt.rcParams['xtick.labelsize'] = 7
 plt.rcParams['ytick.labelsize'] = 7
 
+video_mode = False
+
+# Hyperparameters
+reset_granularity = 10000  # set to 50000 if dim = 3, set to 10000 if dim = 2    
+reset_shift = 999999999999 
+granularity = 20   #  set to 2 if dim > 2, set to 20 if dim = 2 
+Hyperparam = np.full(dim, granularity) 
+shift = np.zeros(dim)
+n_iter = 2000000  
+
+
 for iter in range(n_iter):
 
-    if iter % cutoff == 0 and iter !=0:   
+    if iter % reset_granularity == 0 or iter % reset_shift == 0 or iter == 0:   
 
         # Get more granular Hellinger approximation
-        Hyperparam = 1 + Hyperparam   
-        arr_q = create_quantile_table(X, Hyperparam)
+
+        if iter % reset_granularity == 0: 
+            Hyperparam = 1 + Hyperparam    
+        if iter % reset_shift == 0: 
+            shift = np.random.uniform(0, 1, dim) 
+        arr_q = create_quantile_table(X, Hyperparam, shift) 
         ( hash_bins_real, 
           hash_index_real, 
           hash_bins_median_real 
@@ -268,7 +260,7 @@ for iter in range(n_iter):
         synth_X[k, d] = synth_X[l, d]
         synth_X[l, d] = aux
 
-        if swaps % 25 == 0:
+        if video_mode and swaps % 25 == 0:
 
             # save image for future inclusion in video
             fname='nogan3_frame'+str(frame)+'.png'
@@ -313,15 +305,12 @@ print("Base ECDF Kolmogorof-Smirnov dist. (init.  vs train.): %6.4f" %(ks_base))
 print("Diff ECDF Kolmogorof-Smirnov dist. (init.  vs synth.): %6.4f" %(ks_diff))
 
 
-#--- [6] Plot some results
+#--- [6] Plot some results and create video
 
-import moviepy.video.io.ImageSequenceClip
-clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(flist, fps=6)
-clip.write_videofile('nogan3.mp4')
-
-plt.scatter(synth_X[:,0],synth_X[:,1], c = 'red', s = 0.6)
-plt.scatter(synth_X_init[:,0],synth_X_init[:,1], c = 'green', s = 0.6)
-plt.scatter(X[:,0],X[:,1], c = 'blue', s = 0.6)
+mpl.rc('hatch', color='k', linewidth=0.3)
+plt.scatter(X[:,0],X[:,1],marker='o',c='deepskyblue',alpha=0.1,s=10) 
+plt.scatter(synth_X[:,0],synth_X[:,1],marker='o',c='coral',alpha=0.4,s=10, edgecolors='black',lw=0.2)
+plt.grid(linewidth = 0.4, alpha = 1)
 plt.show()
 
 x_axis = range(len(history_log_H))
@@ -329,4 +318,9 @@ plt.plot(x_axis, history_log_H)
 plt.show()
 plt.plot(x_axis, history_log_swaps)
 plt.show()
+
+if video_mode:
+    import moviepy.video.io.ImageSequenceClip
+    clip = moviepy.video.io.ImageSequenceClip.ImageSequenceClip(flist, fps=6)
+    clip.write_videofile('nogan3.mp4')
 
